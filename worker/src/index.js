@@ -33,6 +33,20 @@ export default {
         return withCors(json({ ok: true }), origin);
       }
 
+      if (path === "/api/auth/login-options" && request.method === "GET") {
+        const rows = await env.DB.prepare(
+          "SELECT username, role FROM users ORDER BY CASE role WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 ELSE 3 END, username"
+        ).all();
+
+        const users = (rows.results || []).map((row) => ({
+          username: row.username,
+          role: row.role,
+          pinRequired: row.role === "manager" || row.role === "admin",
+        }));
+
+        return withCors(json({ users }), origin);
+      }
+
       if (path === "/api/auth/login" && request.method === "POST") {
         const body = await request.json();
         const username = (body.username || "").trim();

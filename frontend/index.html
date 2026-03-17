@@ -13,8 +13,8 @@
       <h1>Mechanic Expense Login</h1>
       <p>StaffはPIN不要、Manager/AdminはPIN必須です。</p>
       <div>
-        <label>Username</label>
-        <input id="username" placeholder="Staff / Manager / Admin" />
+        <label>User</label>
+        <select id="username"></select>
       </div>
       <div style="margin-top: 10px;">
         <label>PIN (Manager/Admin only)</label>
@@ -34,14 +34,45 @@
 
     const loginBtn = document.getElementById("loginBtn");
     const msg = document.getElementById("message");
+    const usernameSelect = document.getElementById("username");
+    const pinInput = document.getElementById("pin");
+
+    async function loadLoginOptions() {
+      const data = await api("/api/auth/login-options");
+      usernameSelect.innerHTML = "";
+
+      for (const user of data.users || []) {
+        const option = document.createElement("option");
+        option.value = user.username;
+        option.textContent = `${user.username} (${user.role})`;
+        option.dataset.pinRequired = String(user.pinRequired);
+        usernameSelect.appendChild(option);
+      }
+
+      updatePinState();
+    }
+
+    function updatePinState() {
+      const selected = usernameSelect.options[usernameSelect.selectedIndex];
+      const pinRequired = selected?.dataset.pinRequired === "true";
+      pinInput.disabled = !pinRequired;
+      if (!pinRequired) {
+        pinInput.value = "";
+        pinInput.placeholder = "Staffは不要";
+      } else {
+        pinInput.placeholder = "0000";
+      }
+    }
+
+    usernameSelect.addEventListener("change", updatePinState);
 
     loginBtn.addEventListener("click", async () => {
       msg.textContent = "";
       msg.className = "notice";
 
       try {
-        const username = document.getElementById("username").value.trim();
-        const pin = document.getElementById("pin").value.trim();
+        const username = usernameSelect.value.trim();
+        const pin = pinInput.value.trim();
 
         const data = await api("/api/auth/login", {
           method: "POST",
@@ -54,6 +85,11 @@
         msg.textContent = err.message;
         msg.className = "notice error";
       }
+    });
+
+    loadLoginOptions().catch((err) => {
+      msg.textContent = `ログインユーザー取得失敗: ${err.message}`;
+      msg.className = "notice error";
     });
   </script>
 </body>
