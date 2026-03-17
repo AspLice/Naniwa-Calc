@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submit | Mechanic Expense</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/config.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div id="nav"></div>
+      <h1>Expense Submit</h1>
+      <p>Ctrl+Vで画像を貼り付けると添付としてアップロードされます（任意）。</p>
+
+      <div class="grid">
+        <div>
+          <label>Category</label>
+          <select id="category"></select>
+        </div>
+        <div>
+          <label>Amount ($)</label>
+          <input id="amount" type="number" step="0.01" min="0" />
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 10px;">
+        <div>
+          <label>Expense Date</label>
+          <input id="expenseDate" type="date" />
+        </div>
+        <div>
+          <label>Description</label>
+          <input id="description" />
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Note</label>
+        <textarea id="note" rows="3"></textarea>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Attached Images</label>
+        <ul id="attachments"></ul>
+      </div>
+
+      <button id="submitBtn" class="primary" style="margin-top: 12px;">Submit</button>
+      <div id="message" class="notice"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, guardPage, renderNav, bindLogout, uploadFile } from "./js/api.js";
+
+    guardPage();
+    document.getElementById("nav").innerHTML = renderNav();
+    bindLogout();
+
+    const attachmentKeys = [];
+    const attachmentList = document.getElementById("attachments");
+
+    async function loadCategories() {
+      const data = await api("/api/categories");
+      const select = document.getElementById("category");
+      select.innerHTML = "";
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "-- None --";
+      select.appendChild(blank);
+
+      for (const c of data.categories) {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name;
+        select.appendChild(opt);
+      }
+    }
+
+    document.addEventListener("paste", async (event) => {
+      const items = event.clipboardData?.items || [];
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (!file) continue;
+          try {
+            const uploaded = await uploadFile(file);
+            attachmentKeys.push(uploaded.key);
+            const li = document.createElement("li");
+            li.textContent = `${uploaded.name} (${Math.round(uploaded.size / 1024)}KB)`;
+            attachmentList.appendChild(li);
+          } catch (err) {
+            alert(`添付アップロード失敗: ${err.message}`);
+          }
+        }
+      }
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const msg = document.getElementById("message");
+      msg.textContent = "";
+      msg.className = "notice";
+
+      try {
+        const payload = {
+          categoryId: document.getElementById("category").value || null,
+          amount: document.getElementById("amount").value,
+          expenseDate: document.getElementById("expenseDate").value,
+          description: document.getElementById("description").value,
+          note: document.getElementById("note").value,
+          attachmentKeys,
+        };
+
+        const res = await api("/api/expenses", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+
+        msg.textContent = `申請を作成しました (ID: ${res.id})`;
+        msg.className = "notice ok";
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "notice error";
+      }
+    });
+
+    loadCategories().catch((err) => alert(err.message));
+  </script>
+</body>
+</html>

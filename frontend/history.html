@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History | Mechanic Expense</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/config.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div id="nav"></div>
+      <h1>Expense History</h1>
+      <div class="grid">
+        <div>
+          <label>Status Filter</label>
+          <select id="status">
+            <option value="">all</option>
+            <option value="pending">pending</option>
+            <option value="approved">approved</option>
+            <option value="rejected">rejected</option>
+            <option value="paid">paid</option>
+          </select>
+        </div>
+        <div id="allWrap" style="display:none;">
+          <label>Scope</label>
+          <select id="scope">
+            <option value="mine">mine</option>
+            <option value="all">all</option>
+          </select>
+        </div>
+      </div>
+      <button id="loadBtn" style="margin-top:10px;">Load</button>
+      <table style="margin-top:12px;">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>User</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, guardPage, renderNav, bindLogout, getUser } from "./js/api.js";
+
+    const user = guardPage();
+    document.getElementById("nav").innerHTML = renderNav();
+    bindLogout();
+
+    if (user.role === "manager" || user.role === "admin") {
+      document.getElementById("allWrap").style.display = "block";
+    }
+
+    async function loadHistory() {
+      const status = document.getElementById("status").value;
+      const scope = document.getElementById("scope")?.value || "mine";
+      const all = scope === "all" ? "&all=1" : "";
+      const statusQuery = status ? `status=${encodeURIComponent(status)}&` : "";
+      const data = await api(`/api/expenses?${statusQuery}${all}`);
+      const rows = document.getElementById("rows");
+      rows.innerHTML = "";
+
+      for (const e of data.expenses) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${e.id}</td>
+          <td>${e.username}</td>
+          <td>$${Number(e.amount).toFixed(2)}</td>
+          <td><span class="badge ${e.status}">${e.status}</span></td>
+          <td>${e.expense_date}</td>
+          <td>${e.description}</td>
+        `;
+        rows.appendChild(tr);
+      }
+    }
+
+    document.getElementById("loadBtn").addEventListener("click", () => {
+      loadHistory().catch((err) => alert(err.message));
+    });
+
+    loadHistory().catch((err) => alert(err.message));
+  </script>
+</body>
+</html>

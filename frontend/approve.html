@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Approve | Mechanic Expense</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/config.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div id="nav"></div>
+      <h1>Approve / Payment</h1>
+      <p>pendingを承認/却下、approvedをpaidに更新できます。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>User</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Description</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, guardPage, renderNav, bindLogout } from "./js/api.js";
+
+    guardPage(["manager", "admin"]);
+    document.getElementById("nav").innerHTML = renderNav();
+    bindLogout();
+
+    async function changeStatus(id, status) {
+      const rejectionReason = status === "rejected" ? prompt("却下理由 (任意)") || "" : undefined;
+      await api(`/api/expenses/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, rejectionReason }),
+      });
+      await load();
+    }
+
+    async function load() {
+      const data = await api("/api/expenses?all=1");
+      const rows = document.getElementById("rows");
+      rows.innerHTML = "";
+
+      for (const e of data.expenses) {
+        const tr = document.createElement("tr");
+        const actions = [];
+
+        if (e.status === "pending") {
+          actions.push(`<button data-id="${e.id}" data-status="approved" class="primary">Approve</button>`);
+          actions.push(`<button data-id="${e.id}" data-status="rejected" class="danger">Reject</button>`);
+        }
+        if (e.status === "approved") {
+          actions.push(`<button data-id="${e.id}" data-status="paid" class="primary">Mark Paid</button>`);
+        }
+
+        tr.innerHTML = `
+          <td>${e.id}</td>
+          <td>${e.username}</td>
+          <td>$${Number(e.amount).toFixed(2)}</td>
+          <td><span class="badge ${e.status}">${e.status}</span></td>
+          <td>${e.description}</td>
+          <td>${actions.join(" ")}</td>
+        `;
+        rows.appendChild(tr);
+      }
+
+      rows.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const status = btn.getAttribute("data-status");
+          try {
+            await changeStatus(id, status);
+          } catch (err) {
+            alert(err.message);
+          }
+        });
+      });
+    }
+
+    load().catch((err) => alert(err.message));
+  </script>
+</body>
+</html>

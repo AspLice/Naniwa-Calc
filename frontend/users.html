@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Users | Mechanic Expense</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/config.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div id="nav"></div>
+      <h1>User Management</h1>
+
+      <div class="grid">
+        <div>
+          <label>Username</label>
+          <input id="username" />
+        </div>
+        <div>
+          <label>Role</label>
+          <select id="role">
+            <option value="staff">staff</option>
+            <option value="manager">manager</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+        <div>
+          <label>PIN (manager/admin)</label>
+          <input id="pin" />
+        </div>
+      </div>
+      <button id="createBtn" class="primary" style="margin-top:10px;">Create User</button>
+
+      <table style="margin-top:12px;">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, guardPage, renderNav, bindLogout } from "./js/api.js";
+
+    guardPage(["manager", "admin"]);
+    document.getElementById("nav").innerHTML = renderNav();
+    bindLogout();
+
+    async function loadUsers() {
+      const data = await api("/api/users");
+      const rows = document.getElementById("rows");
+      rows.innerHTML = "";
+      for (const u of data.users) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${u.id}</td>
+          <td>${u.username}</td>
+          <td>${u.role}</td>
+          <td>${u.created_at}</td>
+        `;
+        rows.appendChild(tr);
+      }
+    }
+
+    document.getElementById("createBtn").addEventListener("click", async () => {
+      try {
+        await api("/api/users", {
+          method: "POST",
+          body: JSON.stringify({
+            username: document.getElementById("username").value,
+            role: document.getElementById("role").value,
+            pin: document.getElementById("pin").value,
+          }),
+        });
+        await loadUsers();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    loadUsers().catch((err) => alert(err.message));
+  </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | Mechanic Expense</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/config.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div id="nav"></div>
+      <h1>Dashboard</h1>
+      <p id="welcome"></p>
+      <div class="grid">
+        <div class="card">
+          <h2>Create Expense</h2>
+          <p>経費申請を作成します。</p>
+          <a href="submit.html">Go Submit</a>
+        </div>
+        <div class="card">
+          <h2>View History</h2>
+          <p>自分または全体の申請履歴を確認します。</p>
+          <a href="history.html">Go History</a>
+        </div>
+        <div class="card" id="approveCard" style="display: none;">
+          <h2>Approve / Paid</h2>
+          <p>承認・支払い処理を行います。</p>
+          <a href="approve.html">Go Approve</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { guardPage, renderNav, bindLogout, getUser } from "./js/api.js";
+
+    const user = guardPage();
+    document.getElementById("nav").innerHTML = renderNav();
+    document.getElementById("welcome").textContent = `${user.username} (${user.role}) でログイン中`;
+    if (user.role === "manager" || user.role === "admin") {
+      document.getElementById("approveCard").style.display = "block";
+    }
+    bindLogout();
+  </script>
+</body>
+</html>

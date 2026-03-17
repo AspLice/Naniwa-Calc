@@ -1,0 +1,23 @@
+﻿name = "fivem-mechanic-expense-api"
+main = "src/index.js"
+compatibility_date = "2026-03-17"
+
+[vars]
+FRONTEND_ORIGIN = "https://asplice.github.io/Naniwa-Calc"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mechanic-expense-db-v2"
+database_id = "26b1d2ba-d0f3-47ca-a973-96fc0ead320a"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "cfb0ee37c4144cf792d4fe046e3ba83a"
+
+[[r2_buckets]]
+binding = "RECEIPTS"
+bucket_name = "mechanic-expense-receipts"
+
+[triggers]
+crons = ["0 0 */10 * *"]
+

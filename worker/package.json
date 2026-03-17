@@ -1,0 +1,14 @@
+{
+  "name": "fivem-mechanic-expense-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply mechanic-expense-db-v2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.7.1"
+  }
+}
