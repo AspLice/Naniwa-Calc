@@ -6,7 +6,7 @@ const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 
 export default {
   async fetch(request, env) {
-    const origin = env.FRONTEND_ORIGIN || "*";
+    const origin = resolveCorsOrigin(request, env);
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
@@ -366,6 +366,24 @@ export default {
     await env.DB.prepare("DELETE FROM audit_logs WHERE created_at <= datetime('now', '-10 day')").run();
   },
 };
+
+function normalizeOrigin(value) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function resolveCorsOrigin(request, env) {
+  const configured = env.FRONTEND_ORIGIN || "*";
+  if (configured === "*") return "*";
+
+  const reqOrigin = request.headers.get("Origin");
+  if (!reqOrigin) return normalizeOrigin(configured);
+
+  if (normalizeOrigin(reqOrigin) === normalizeOrigin(configured)) {
+    return reqOrigin;
+  }
+
+  return normalizeOrigin(configured);
+}
 
 async function getAuthUser(request, env) {
   const authHeader = request.headers.get("Authorization") || "";

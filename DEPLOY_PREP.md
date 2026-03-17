@@ -26,7 +26,7 @@
 このスクリプト中で必要になる入力値:
 - D1 database_id
 - KV namespace id
-- FRONTEND_ORIGIN
+- FRONTEND_ORIGIN（例: https://asplice.github.io のようにパスなし）
 - JWT_SECRET
 - DISCORD_WEBHOOK_URL（任意）
 

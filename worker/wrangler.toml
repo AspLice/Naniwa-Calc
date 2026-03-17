@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-03-17"
 
 [vars]
-FRONTEND_ORIGIN = "https://asplice.github.io/Naniwa-Calc"
+FRONTEND_ORIGIN = "https://asplice.github.io"
 
 [[d1_databases]]
 binding = "DB"

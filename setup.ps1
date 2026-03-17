@@ -42,7 +42,7 @@ $wranglerContent = $wranglerContent.Replace("REPLACE_WITH_KV_NAMESPACE_ID", $kvI
 Set-Content -Path $wranglerPath -Value $wranglerContent -Encoding UTF8
 
 Write-Host "[6/8] Set required secrets" -ForegroundColor Cyan
-$frontendOrigin = Read-Host "Enter FRONTEND_ORIGIN (e.g. https://<user>.github.io/<repo>)"
+$frontendOrigin = Read-Host "Enter FRONTEND_ORIGIN (origin only, e.g. https://<user>.github.io)"
 $jwtSecret = Read-Host "Enter JWT_SECRET random string"
 $wranglerContent = Get-Content $wranglerPath -Raw
 $wranglerContent = [regex]::Replace($wranglerContent, 'FRONTEND_ORIGIN\s*=\s*"[^"]*"', "FRONTEND_ORIGIN = `"$frontendOrigin`"")
