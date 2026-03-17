@@ -48,6 +48,7 @@
               <th>名称</th>
               <th>親ID</th>
               <th>状態</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -112,9 +113,31 @@
           <td>${c.name}</td>
           <td>${c.parent_id || "-"}</td>
           <td>${Number(c.is_active) === 1 ? "active" : "inactive"}</td>
+          <td><button data-id="${c.id}" data-name="${c.name}">編集</button></td>
         `;
         rows.appendChild(tr);
       }
+
+      rows.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const currentName = btn.getAttribute("data-name");
+          const nextName = prompt("カテゴリ名を編集", currentName || "");
+          if (nextName === null) return;
+          try {
+            await api(`/api/admin/categories/${id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ name: nextName }),
+            });
+            msg.textContent = "カテゴリを更新しました";
+            msg.className = "notice ok";
+            await loadCategories();
+          } catch (err) {
+            msg.textContent = err.message;
+            msg.className = "notice error";
+          }
+        });
+      });
     }
 
     levelSelect.addEventListener("change", buildParentOptions);

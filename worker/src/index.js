@@ -168,6 +168,30 @@ export default {
         return withCors(json({ ok: true, id: result.meta.last_row_id }), origin);
       }
 
+      if (path.startsWith("/api/admin/categories/") && request.method === "PATCH") {
+        const auth = await requireAuth(request, env);
+        if (!auth.ok) return withCors(json({ error: auth.error }, auth.status), origin);
+        if (!isManagerOrAdmin(auth.user.role)) return withCors(json({ error: "forbidden" }, 403), origin);
+
+        const id = Number(path.split("/").pop());
+        if (!Number.isFinite(id)) return withCors(json({ error: "invalid category id" }, 400), origin);
+
+        const body = await request.json();
+        const name = (body.name || "").trim();
+        if (!name) return withCors(json({ error: "name is required" }, 400), origin);
+
+        const target = await env.DB.prepare("SELECT id FROM categories WHERE id = ?").bind(id).first();
+        if (!target) return withCors(json({ error: "category not found" }, 404), origin);
+
+        await env.DB.prepare("UPDATE categories SET name = ? WHERE id = ?")
+          .bind(name, id)
+          .run();
+
+        await writeAudit(env, auth.user.id, "category.update", "category", String(id), name);
+
+        return withCors(json({ ok: true }), origin);
+      }
+
       if (path === "/api/users" && request.method === "GET") {
         const auth = await requireAuth(request, env);
         if (!auth.ok) return withCors(json({ error: auth.error }, auth.status), origin);
