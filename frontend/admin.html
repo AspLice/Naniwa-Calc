@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin | Mechanic Expense</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/config.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div id="nav"></div>
+      <h1>管理画面</h1>
+      <p>Manager/Admin用。経費項目を大項目・中項目・小項目で追加できます。</p>
+
+      <div class="card" style="margin-bottom: 14px;">
+        <h2>項目追加</h2>
+        <div class="grid">
+          <div>
+            <label>階層</label>
+            <select id="level">
+              <option value="1">大項目</option>
+              <option value="2">中項目</option>
+              <option value="3">小項目</option>
+            </select>
+          </div>
+          <div>
+            <label>親カテゴリ</label>
+            <select id="parent"></select>
+          </div>
+          <div>
+            <label>名称</label>
+            <input id="name" placeholder="例: Engine / Oil Filter" />
+          </div>
+        </div>
+        <button id="createBtn" class="primary" style="margin-top: 10px;">追加する</button>
+        <div id="message" class="notice"></div>
+      </div>
+
+      <div class="card">
+        <h2>カテゴリ一覧</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>階層</th>
+              <th>名称</th>
+              <th>親ID</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, guardPage, renderNav, bindLogout } from "./js/api.js";
+
+    guardPage(["manager", "admin"]);
+    document.getElementById("nav").innerHTML = renderNav();
+    bindLogout();
+
+    const levelSelect = document.getElementById("level");
+    const parentSelect = document.getElementById("parent");
+    const rows = document.getElementById("rows");
+    const msg = document.getElementById("message");
+    let categories = [];
+
+    function buildParentOptions() {
+      const level = Number(levelSelect.value);
+      parentSelect.innerHTML = "";
+
+      if (level === 1) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "不要";
+        parentSelect.appendChild(opt);
+        parentSelect.disabled = true;
+        return;
+      }
+
+      parentSelect.disabled = false;
+      const targetParentLevel = level - 1;
+      const candidates = categories.filter((c) => Number(c.level) === targetParentLevel && Number(c.is_active) === 1);
+
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "-- 親カテゴリを選択 --";
+      parentSelect.appendChild(blank);
+
+      for (const c of candidates) {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = `#${c.id} ${c.name}`;
+        parentSelect.appendChild(opt);
+      }
+    }
+
+    async function loadCategories() {
+      const data = await api("/api/admin/categories");
+      categories = data.categories || [];
+      buildParentOptions();
+      rows.innerHTML = "";
+      for (const c of categories) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${c.id}</td>
+          <td>${c.level}</td>
+          <td>${c.name}</td>
+          <td>${c.parent_id || "-"}</td>
+          <td>${Number(c.is_active) === 1 ? "active" : "inactive"}</td>
+        `;
+        rows.appendChild(tr);
+      }
+    }
+
+    levelSelect.addEventListener("change", buildParentOptions);
+
+    document.getElementById("createBtn").addEventListener("click", async () => {
+      msg.textContent = "";
+      msg.className = "notice";
+      try {
+        const payload = {
+          name: document.getElementById("name").value,
+          parentId: parentSelect.value || null,
+        };
+        await api("/api/admin/categories", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        document.getElementById("name").value = "";
+        msg.textContent = "カテゴリを追加しました";
+        msg.className = "notice ok";
+        await loadCategories();
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "notice error";
+      }
+    });
+
+    loadCategories().catch((err) => {
+      msg.textContent = err.message;
+      msg.className = "notice error";
+    });
+  </script>
+</body>
+</html>

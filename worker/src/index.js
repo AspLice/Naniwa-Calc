@@ -103,8 +103,69 @@ export default {
       if (path === "/api/categories" && request.method === "GET") {
         const auth = await requireAuth(request, env);
         if (!auth.ok) return withCors(json({ error: auth.error }, auth.status), origin);
-        const rows = await env.DB.prepare("SELECT id, name FROM categories ORDER BY name").all();
+        const rows = await env.DB.prepare(
+          "SELECT id, name, parent_id, level, sort_order FROM categories WHERE is_active = 1 ORDER BY level, sort_order, name"
+        ).all();
         return withCors(json({ categories: rows.results || [] }), origin);
+      }
+
+      if (path === "/api/category-tree" && request.method === "GET") {
+        const auth = await requireAuth(request, env);
+        if (!auth.ok) return withCors(json({ error: auth.error }, auth.status), origin);
+
+        const rows = await env.DB.prepare(
+          "SELECT id, name, parent_id, level, sort_order FROM categories WHERE is_active = 1 ORDER BY level, sort_order, name"
+        ).all();
+
+        return withCors(json({ tree: buildCategoryTree(rows.results || []) }), origin);
+      }
+
+      if (path === "/api/admin/categories" && request.method === "GET") {
+        const auth = await requireAuth(request, env);
+        if (!auth.ok) return withCors(json({ error: auth.error }, auth.status), origin);
+        if (!isManagerOrAdmin(auth.user.role)) return withCors(json({ error: "forbidden" }, 403), origin);
+
+        const rows = await env.DB.prepare(
+          "SELECT id, name, parent_id, level, sort_order, is_active, created_at FROM categories ORDER BY level, sort_order, name"
+        ).all();
+
+        return withCors(json({ categories: rows.results || [], tree: buildCategoryTree(rows.results || []) }), origin);
+      }
+
+      if (path === "/api/admin/categories" && request.method === "POST") {
+        const auth = await requireAuth(request, env);
+        if (!auth.ok) return withCors(json({ error: auth.error }, auth.status), origin);
+        if (!isManagerOrAdmin(auth.user.role)) return withCors(json({ error: "forbidden" }, 403), origin);
+
+        const body = await request.json();
+        const name = (body.name || "").trim();
+        const parentId = body.parentId ? Number(body.parentId) : null;
+
+        if (!name) return withCors(json({ error: "name is required" }, 400), origin);
+
+        let level = 1;
+        if (parentId) {
+          const parent = await env.DB.prepare("SELECT id, level FROM categories WHERE id = ? AND is_active = 1")
+            .bind(parentId)
+            .first();
+          if (!parent) return withCors(json({ error: "parent category not found" }, 404), origin);
+          level = Number(parent.level) + 1;
+          if (level > 3) return withCors(json({ error: "max depth is level 3" }, 400), origin);
+        }
+
+        const max = await env.DB.prepare(
+          "SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM categories WHERE parent_id IS ?"
+        ).bind(parentId).first();
+
+        const result = await env.DB.prepare(
+          "INSERT INTO categories (name, parent_id, level, sort_order, is_active) VALUES (?, ?, ?, ?, 1)"
+        )
+          .bind(name, parentId, level, Number(max?.max_order || 0) + 10)
+          .run();
+
+        await writeAudit(env, auth.user.id, "category.create", "category", String(result.meta.last_row_id), `level=${level}`);
+
+        return withCors(json({ ok: true, id: result.meta.last_row_id }), origin);
       }
 
       if (path === "/api/users" && request.method === "GET") {
@@ -420,6 +481,37 @@ async function requireAuth(request, env) {
 
 function isManagerOrAdmin(role) {
   return role === "manager" || role === "admin";
+}
+
+function buildCategoryTree(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    map.set(row.id, {
+      id: row.id,
+      name: row.name,
+      parentId: row.parent_id,
+      level: row.level,
+      sortOrder: row.sort_order || 0,
+      children: [],
+    });
+  }
+
+  const roots = [];
+  for (const node of map.values()) {
+    if (node.parentId && map.has(node.parentId)) {
+      map.get(node.parentId).children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortNodes = (nodes) => {
+    nodes.sort((a, b) => (a.sortOrder - b.sortOrder) || a.name.localeCompare(b.name));
+    for (const child of nodes) sortNodes(child.children);
+  };
+  sortNodes(roots);
+
+  return roots;
 }
 
 async function getExpenseById(env, id) {

@@ -16,8 +16,16 @@
 
       <div class="grid">
         <div>
-          <label>Category</label>
-          <select id="category"></select>
+          <label>大項目</label>
+          <select id="largeCategory"></select>
+        </div>
+        <div>
+          <label>中項目</label>
+          <select id="mediumCategory"></select>
+        </div>
+        <div>
+          <label>小項目</label>
+          <select id="smallCategory"></select>
         </div>
         <div>
           <label>Amount ($)</label>
@@ -60,23 +68,49 @@
 
     const attachmentKeys = [];
     const attachmentList = document.getElementById("attachments");
+    const largeSelect = document.getElementById("largeCategory");
+    const mediumSelect = document.getElementById("mediumCategory");
+    const smallSelect = document.getElementById("smallCategory");
+    let categoryTree = [];
 
-    async function loadCategories() {
-      const data = await api("/api/categories");
-      const select = document.getElementById("category");
+    function fillSelect(select, items, label) {
       select.innerHTML = "";
       const blank = document.createElement("option");
       blank.value = "";
-      blank.textContent = "-- None --";
+      blank.textContent = `-- ${label}を選択 --`;
       select.appendChild(blank);
 
-      for (const c of data.categories) {
+      for (const c of items) {
         const opt = document.createElement("option");
         opt.value = c.id;
         opt.textContent = c.name;
         select.appendChild(opt);
       }
     }
+
+    function refreshMediumAndSmall() {
+      const large = categoryTree.find((c) => String(c.id) === largeSelect.value);
+      const mediums = large ? large.children || [] : [];
+      fillSelect(mediumSelect, mediums, "中項目");
+      fillSelect(smallSelect, [], "小項目");
+    }
+
+    function refreshSmall() {
+      const large = categoryTree.find((c) => String(c.id) === largeSelect.value);
+      const medium = (large?.children || []).find((c) => String(c.id) === mediumSelect.value);
+      fillSelect(smallSelect, medium ? medium.children || [] : [], "小項目");
+    }
+
+    async function loadCategoryTree() {
+      const data = await api("/api/category-tree");
+      categoryTree = data.tree || [];
+      fillSelect(largeSelect, categoryTree, "大項目");
+      fillSelect(mediumSelect, [], "中項目");
+      fillSelect(smallSelect, [], "小項目");
+    }
+
+    largeSelect.addEventListener("change", refreshMediumAndSmall);
+    mediumSelect.addEventListener("change", refreshSmall);
 
     document.addEventListener("paste", async (event) => {
       const items = event.clipboardData?.items || [];
@@ -103,8 +137,9 @@
       msg.className = "notice";
 
       try {
+        const selectedCategoryId = smallSelect.value || mediumSelect.value || largeSelect.value || null;
         const payload = {
-          categoryId: document.getElementById("category").value || null,
+          categoryId: selectedCategoryId,
           amount: document.getElementById("amount").value,
           expenseDate: document.getElementById("expenseDate").value,
           description: document.getElementById("description").value,
@@ -125,7 +160,7 @@
       }
     });
 
-    loadCategories().catch((err) => alert(err.message));
+    loadCategoryTree().catch((err) => alert(err.message));
   </script>
 </body>
 </html>

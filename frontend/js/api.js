@@ -93,6 +93,7 @@ export function renderNav() {
       <a href="history.html">History</a>
       ${(user.role === "manager" || user.role === "admin") ? '<a href="approve.html">Approve</a>' : ""}
       ${(user.role === "manager" || user.role === "admin") ? '<a href="users.html">Users</a>' : ""}
+      ${(user.role === "manager" || user.role === "admin") ? '<a href="admin.html">Admin</a>' : ""}
       <button id="logoutBtn" class="danger">Logout</button>
     </nav>
   `;

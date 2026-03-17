@@ -29,6 +29,11 @@
           <p>承認・支払い処理を行います。</p>
           <a href="approve.html">Go Approve</a>
         </div>
+        <div class="card" id="adminCard" style="display: none;">
+          <h2>Category Management</h2>
+          <p>大項目・中項目・小項目を管理します。</p>
+          <a href="admin.html">Go Admin</a>
+        </div>
       </div>
     </div>
   </div>
@@ -41,6 +46,7 @@
     document.getElementById("welcome").textContent = `${user.username} (${user.role}) でログイン中`;
     if (user.role === "manager" || user.role === "admin") {
       document.getElementById("approveCard").style.display = "block";
+      document.getElementById("adminCard").style.display = "block";
     }
     bindLogout();
   </script>
